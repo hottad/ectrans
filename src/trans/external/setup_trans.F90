@@ -10,7 +10,7 @@
 
 SUBROUTINE SETUP_TRANS(KSMAX,KDGL,KDLON,KLOEN,LDSPLIT,PSTRET,&
 &KTMAX,KRESOL,PWEIGHT,LDGRIDONLY,LDUSERPNM,LDKEEPRPNM,LDUSEFLT,&
-&LDSPSETUPONLY,LDPNMONLY,LDUSEFFTW,&
+&LDSPSETUPONLY,LDPNMONLY,LDUSEFFTW,LDUSECC,&
 &LDLL,LDSHIFTLL,CDIO_LEGPOL,CDLEGPOLFNAME,KLEGPOLPTR,KLEGPOLPTR_LEN)
 
 !**** *SETUP_TRANS* - Setup transform package for specific resolution
@@ -52,6 +52,7 @@ SUBROUTINE SETUP_TRANS(KSMAX,KDGL,KDLON,KLOEN,LDSPLIT,PSTRET,&
 !                  FLT, otherwise always kept)
 !     LDPNMONLY  - Compute the Legendre polynomials only, not the FFTs.
 !     LDUSEFFTW    - Use FFTW for FFTs
+!     LDUSECC    - Use Clenshaw-Curtis quadrature instead of Gauss
 !     LDLL                 - Setup second set of input/output latitudes
 !                                 the number of input/output latitudes to transform is equal KDGL
 !                                 or KDGL+2 in the case that includes poles + equator
@@ -94,6 +95,7 @@ SUBROUTINE SETUP_TRANS(KSMAX,KDGL,KDLON,KLOEN,LDSPLIT,PSTRET,&
 !        G. Mozdzynski : Jun 2015 Support alternative FFTs to FFTW
 !        M.Hamrud/W.Deconinck : July 2015 IO options for Legenndre polynomials
 !        R. El Khatib 07-Mar-2016 Better flexibility for Legendre polynomials computation in stretched mode
+!        N. Wedi, April 2020  : Clenshaw-Curtis quadrature
 !     ------------------------------------------------------------------
 
 USE PARKIND1  ,ONLY : JPIM     ,JPRB,  JPRD
@@ -146,6 +148,7 @@ LOGICAL   ,OPTIONAL,INTENT(IN):: LDKEEPRPNM
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDSPSETUPONLY
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDPNMONLY
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDUSEFFTW
+LOGICAL   ,OPTIONAL,INTENT(IN):: LDUSECC
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDLL
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDSHIFTLL
 CHARACTER(LEN=*),OPTIONAL,INTENT(IN):: CDIO_LEGPOL
@@ -229,6 +232,7 @@ S%LUSEFLT=.FALSE. ! Use fast legendre transforms
 #ifdef WITH_FFTW
 TW%LFFTW=.FALSE. ! Use FFTW interface for FFTs
 #endif
+S%LUSE_GAUSS=.TRUE.
 LLSPSETUPONLY = .FALSE. ! Only create distributed spectral setup
 S%LDLL = .FALSE. ! use mapping to/from second set of latitudes
 S%LSHIFTLL = .FALSE. ! shift output lat-lon by 0.5dx, 0.5dy
@@ -375,6 +379,10 @@ IF(PRESENT(CDIO_LEGPOL)) THEN
     WRITE(NERR,*) 'CDIO_LEGPOL ', TRIM(CDIO_LEGPOL)
     CALL  ABORT_TRANS('SETUP_TRANS:CDIO_LEGPOL UNKNOWN METHOD ')
   ENDIF
+ENDIF
+
+IF(PRESENT(LDUSECC)) THEN
+  S%LUSE_GAUSS=.NOT.LDUSECC
 ENDIF
 
 IF(PRESENT(LDUSEFLT)) THEN
