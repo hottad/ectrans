@@ -448,7 +448,6 @@ if ( myproc == 1) then
     write(nout,'(" ")')
   end if
 end if
-end if
 
 !===================================================================================================
 ! Allocate and Initialize spectral arrays
