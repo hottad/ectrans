@@ -123,6 +123,7 @@ logical :: lstack = .false. ! Output stack info
 logical :: luserpnm = .false.
 logical :: lkeeprpnm = .false.
 logical :: luseflt = .false. ! Use fast legendre transforms
+logical :: lusecc = .false. ! Use Clenshaw-Curtis quadrature instead of Gaussian
 logical :: ltrace_stats = .false.
 logical :: lstats_omp = .false.
 logical :: lstats_comms = .false.
@@ -227,7 +228,8 @@ character(len=16) :: cgrid
 luse_mpi = detect_mpirun()
 
 ! Setup
-call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, luseflt, nproma, verbose, ldump_values)
+call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, luseflt, &
+       & lusecc, nproma, verbose, ldump_values)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid,ndgl,nloen)
 nflevg = nfld
@@ -392,7 +394,7 @@ call setup_trans0(kout=nout,kerr=nerr,kprintlev=merge(2, 0, verbose),kmax_resol=
 &                 prad=zra,ldalloperm=.true.,ldmpoff=.not.luse_mpi)
 
 call setup_trans(ksmax=nsmax,kdgl=ndgl,kloen=nloen,ldsplit=.true.,&
-&                 ldusefftw=.false., lduserpnm=luserpnm,ldkeeprpnm=lkeeprpnm, &
+&                 ldusefftw=.false., ldusecc=lusecc, lduserpnm=luserpnm,ldkeeprpnm=lkeeprpnm, &
 &                 lduseflt=luseflt)
 !
 call trans_inq(kspec2=nspec2,kspec2g=nspec2g,kgptot=ngptot,kgptotg=ngptotg)
@@ -431,12 +433,20 @@ if ( myproc == 1) then
   write(nout,'("nspec2    ",i0)') nspec2
   write(nout,'("nspec2g   ",i0)') nspec2g
   write(nout,'("luseflt   ",l)') luseflt
+  write(nout,'("lusecc    ",l)') lusecc
   write(nout,'("lvordiv   ",l)') lvordiv
   write(nout,'("lscders   ",l)') lscders
   write(nout,'("luvders   ",l)') luvders
   write(nout,'(" ")')
   write(nout,'(a)') '======= End of runtime parameters ======='
   write(nout,'(" ")')
+  ! Check for quadrature limit
+  if (lusecc.and.(ndgl-1 .le. 2*nsmax)) then
+    write(nout,'(a)') 'WARNING: violating Clenshaw-Curtis quadrature limit'
+    write(nout,'(a)') 'WARNING: 2*nsmax exceeds ndgl-1'
+    write(nout,'(a)') 'WARNING: transform will be inexact'
+    write(nout,'(" ")')
+  end if
 end if
 
 !===================================================================================================
@@ -972,7 +982,7 @@ subroutine parsing_failed(message)
 end subroutine
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, lflt, &
-  &                                   nproma, verbose, ldump_values)
+  &                                   lcc, nproma, verbose, ldump_values)
 
   integer, intent(inout) :: nsmax   ! Spectral truncation
   character(len=16), intent(inout) :: cgrid ! Spectral truncation
@@ -983,6 +993,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   logical, intent(inout) :: lscders ! Compute scalar derivatives
   logical, intent(inout) :: luvders ! Compute uv East-West derivatives
   logical, intent(inout) :: lflt    ! use fast Legendre transforms
+  logical, intent(inout) :: lcc     ! use Clenshaw-Curtis quadrature
   integer, intent(inout) :: nproma  ! NPROMA
   logical, intent(inout) :: verbose ! Print verbose output or not
   logical, intent(inout) :: ldump_values
@@ -997,6 +1008,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   lscders = .false.
   luvders = .false.
   lflt = .false.
+  lcc  = .false.
 
   do while (iarg <= command_argument_count())
     call get_command_argument(iarg, carg)
@@ -1034,6 +1046,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
       case('--scders'); lscders = .True.
       case('--uvders'); luvders = .True.
       case('--flt'); lflt = .True.
+      case('--cc'); lcc = .True.
       case('--nproma'); nproma = get_int_value(iarg)
       case('--dump-values'); ldump_values = .true.
       case default
@@ -1142,6 +1155,7 @@ subroutine print_help(unit)
   write(nout, "(a)") "    --scders            Compute scalar derivatives (default off)"
   write(nout, "(a)") "    --uvders            Compute uv East-West derivatives (default off). Only when also --vordiv is given"
   write(nout, "(a)") "    --flt               Run with fast Legendre transforms (default off)"
+  write(nout, "(a)") "    --cc                Run with Clenshaw-Curtis quadrature and grid (default off)"
   write(nout, "(a)") "    --nproma NPROMA     Run with NPROMA (default no blocking: NPROMA=ngptot)"
   write(nout, "(a)") ""
   write(nout, "(a)") "DEBUGGING"
