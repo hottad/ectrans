@@ -124,6 +124,7 @@ logical :: luserpnm = .false.
 logical :: lkeeprpnm = .false.
 logical :: luseflt = .false. ! Use fast legendre transforms
 logical :: lusecc = .false. ! Use Clenshaw-Curtis quadrature instead of Gaussian
+logical :: lusehlpx = .false. ! Use HEALPix grid instead of Gaussian grid
 logical :: ltrace_stats = .false.
 logical :: lstats_omp = .false.
 logical :: lstats_comms = .false.
@@ -229,7 +230,7 @@ luse_mpi = detect_mpirun()
 
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, luseflt, &
-       & lusecc, nproma, verbose, ldump_values)
+       & lusecc, lusehlpx, nproma, verbose, ldump_values)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid,ndgl,nloen)
 nflevg = nfld
@@ -394,8 +395,8 @@ call setup_trans0(kout=nout,kerr=nerr,kprintlev=merge(2, 0, verbose),kmax_resol=
 &                 prad=zra,ldalloperm=.true.,ldmpoff=.not.luse_mpi)
 
 call setup_trans(ksmax=nsmax,kdgl=ndgl,kloen=nloen,ldsplit=.true.,&
-&                 ldusefftw=.false., ldusecc=lusecc, lduserpnm=luserpnm,ldkeeprpnm=lkeeprpnm, &
-&                 lduseflt=luseflt)
+&                 ldusefftw=lfftw, ldusecc=lusecc, ldusehlpx=lusehlpx, lduserpnm=luserpnm, &
+&                 ldkeeprpnm=lkeeprpnm, lduseflt=luseflt)
 !
 call trans_inq(kspec2=nspec2,kspec2g=nspec2g,kgptot=ngptot,kgptotg=ngptotg)
 
@@ -434,6 +435,7 @@ if ( myproc == 1) then
   write(nout,'("nspec2g   ",i0)') nspec2g
   write(nout,'("luseflt   ",l)') luseflt
   write(nout,'("lusecc    ",l)') lusecc
+  write(nout,'("lusehlpx  ",l)') lusehlpx
   write(nout,'("lvordiv   ",l)') lvordiv
   write(nout,'("lscders   ",l)') lscders
   write(nout,'("luvders   ",l)') luvders
@@ -949,6 +951,18 @@ subroutine parse_grid(cgrid,ndgl,nloen)
       end do
       return
     endif
+    if (cgrid(1:1) == 'H') then ! HEALPix grid
+      do i=1, ndgl / 4
+        nloen(i) = 4*i
+      end do
+      do i=ndgl / 4 + 1, ndgl / 2
+        nloen(i) = ndgl
+      end do
+      do i=1, ndgl / 2
+        nloen(ndgl - i +1) =  nloen(i)
+      end do
+      return
+    endif
   endif
   call parsing_failed("ERROR: Unsupported grid specified: "// trim(cgrid))
 end subroutine
@@ -982,7 +996,7 @@ subroutine parsing_failed(message)
 end subroutine
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, lflt, &
-  &                                   lcc, nproma, verbose, ldump_values)
+  &                                   lcc, lhlpx, nproma, verbose, ldump_values)
 
   integer, intent(inout) :: nsmax   ! Spectral truncation
   character(len=16), intent(inout) :: cgrid ! Spectral truncation
@@ -994,6 +1008,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   logical, intent(inout) :: luvders ! Compute uv East-West derivatives
   logical, intent(inout) :: lflt    ! use fast Legendre transforms
   logical, intent(inout) :: lcc     ! use Clenshaw-Curtis quadrature
+  logical, intent(inout) :: lhlpx   ! use HEALPix grid
   integer, intent(inout) :: nproma  ! NPROMA
   logical, intent(inout) :: verbose ! Print verbose output or not
   logical, intent(inout) :: ldump_values
@@ -1009,6 +1024,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   luvders = .false.
   lflt = .false.
   lcc  = .false.
+  lhlpx= .false.
 
   do while (iarg <= command_argument_count())
     call get_command_argument(iarg, carg)
@@ -1047,6 +1063,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
       case('--uvders'); luvders = .True.
       case('--flt'); lflt = .True.
       case('--cc'); lcc = .True.
+      case('--hlpx'); lhlpx = .True.
       case('--nproma'); nproma = get_int_value(iarg)
       case('--dump-values'); ldump_values = .true.
       case default

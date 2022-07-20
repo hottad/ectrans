@@ -48,9 +48,9 @@ LOGICAL :: LDLL
 LOGICAL :: LSHIFTLL
 LOGICAL :: LUSEFLT
 LOGICAL :: LUSE_BELUSOV
-LOGICAL :: LUSE_GAUSS
 LOGICAL :: LKEEPRPNM
 LOGICAL :: LSOUTHPNM ! .TRUE. to compute Legendre polynomials on southern hemisphere
+CHARACTER(LEN=1) :: CGRID ! 'G' for Gauss, 'C' for Clenshaw-Curtis and 'H' for HEALPix
 INTEGER(KIND=JPIM) :: IMLOC
 INTEGER(KIND=JPIM) :: ITHRESHOLD
 INTEGER(KIND=JPIM) :: NDGNHD ! dual set dimension

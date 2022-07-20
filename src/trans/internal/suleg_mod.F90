@@ -158,7 +158,7 @@ INTEGER(KIND=JPIM) :: INM, IM, IRECV, ISEND, ISREQ, IRREQ, &
              &INX, ISL, ISTART, ITHRESHOLD, INSMAX, IMAXCOLS,ILATSMAX,JW,JV,J, &
              &IDGLU, ILA, ILS, IA, IS, I, ILATS, ILOOP, IPRTRV, JSETV, JH, &
              &IMAXRECVA, IMAXRECVS, IRECVLENMAX, ICLONELEN, IHEMIS, INNH, IGL, IGL1, IGL2, &
-             &IDGLU2, ISYM, INZ, JNP
+             &IDGLU2, ISYM, INZ, JNP, NSIDE
 
 REAL(KIND=JPRD) :: ZEPS_INT_DEC
 REAL(KIND=JPRD) :: ZEPS
@@ -267,7 +267,8 @@ DO JN=ISTART,R%NDGL
 ENDDO
 
 INN=R%NDGL
-IF( S%LUSE_GAUSS ) THEN
+SELECT CASE(S%CGRID)
+CASE('G')
 ! compute latitudes and weights for original Gaussian latitudes
 ZANM=SQRT(REAL(2*INMAX+1,JPRD)*REAL(INMAX**2,JPRD)/REAL(2*INMAX-1,JPRD))
 INN=R%NDGL
@@ -292,7 +293,7 @@ IF (ABS(G%RSTRET-1.0_JPRD)>100._JPRD*EPSILON(1._JPRD)) THEN
     ZLRMUZ(JGL)=REAL(ZSTRETMU(JGL),JPRD)
   ENDDO
   ENDIF
-ELSE
+CASE('C')
   ! Clenshaw-Curtis quadrature (odd number of latitudes, one latitude less)
   ! try approach with equator 2x for compatibility with grib and current Gauss approach
   ZPI = 2.0_JPRD*ASIN(1.0_JPRD)
@@ -319,8 +320,30 @@ ELSE
     ENDDO
     ZW(JGL+1) = (2._JPRD*SIN(ZTHETA)/REAL(INN,JPRD))*ZFACT
   ENDDO
-
-ENDIF
+CASE('H')
+  ! HEALPix grid
+  ! Like Clenshaw-Curtis, Equator is duplicated
+  NSIDE=INN/4_JPIM
+  DO JGL=1,NSIDE ! Polar cap
+    ZLRMUZ(JGL)=1._JPRD - (JGL*JGL)/(3._JPRD*NSIDE*NSIDE)
+    ZW(JGL)=4._JPRD*JGL
+  ENDDO
+  DO JGL=NSIDE+1,INN/2_JPIM ! Equatorial belt
+    ZLRMUZ(JGL)=4._JPRD/3._JPRD -(2._JPRD*JGL)/(3._JPRD*NSIDE)
+    ZW(JGL)=4._JPRD*NSIDE
+  ENDDO
+  ! shift/duplicate equator
+  ZW(INN/2_JPIM) = ZW(INN/2_JPIM)*0.5_JPRD
+  ! Southern Hemisphere mirrors Northern Hemisphere
+  DO JGL=INN/2_JPIM+1_JPIM,INN
+    ZLRMUZ(JGL)= - ZLRMUZ(INN+1_JPIM-JGL)
+    ZW(    JGL)=   ZW(    INN+1_JPIM-JGL)
+  ENDDO
+  ! normalize the weight
+  ZW(1:INN)=ZW(1:INN)/(12._JPRD*NSIDE*NSIDE)
+CASE DEFAULT
+  CALL ABORT_TRANS('SULEG: INVALID GRID TYPE IN S%CGRID')
+END SELECT
 
 DO JGL=1,R%NDGL
   F%RW(JGL)     = ZW(JGL)
