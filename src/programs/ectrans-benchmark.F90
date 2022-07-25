@@ -726,6 +726,9 @@ do jstep=1,iters
     if( myproc==1 ) then
       ! Surface pressure
       zmaxerr(:)=-999.0
+      print *, 'znormsp1(1) ',znormsp1(1), 'znormsp(1) ',znormsp(1)
+      print *, 'znormdiv1(1)',znormdiv1(1),'znormdiv(1)',znormdiv(1)
+      print *, 'znormvor1(1)',znormvor1(1),'znormvor(1)',znormvor(1)
       do ifld=1,1
         zerr(1)=abs(znormsp1(ifld)/znormsp(ifld)-1.0_jprb)
         zmaxerr(1)=max(zmaxerr(1),zerr(1))
