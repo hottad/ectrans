@@ -832,19 +832,19 @@ ztloop=ztloop/real(nproc,jprd)
 ztstep(:)=ztstep(:)/real(nproc,jprd)
 
 call sort(ztstep,iters)
-ztstepmed = ztstep(iters/2)
+ztstepmed = ztstep(max(1,iters/2)) ! will fail when iters==1 without max(1,iters/2)) 
 
 ztstepavg1=(ztstepavg1/real(nproc,jprb))/real(iters,jprd)
 ztstep1(:)=ztstep1(:)/real(nproc,jprd)
 
 call sort(ztstep1,iters)
-ztstepmed1 = ztstep1(iters/2)
+ztstepmed1 = ztstep1(max(1,iters/2))
 
 ztstepavg2=(ztstepavg2/real(nproc,jprb))/real(iters,jprd)
 ztstep2(:)=ztstep2(:)/real(nproc,jprd)
 
 call sort(ztstep2,iters)
-ztstepmed2 = ztstep2(iters/2)
+ztstepmed2 = ztstep2(max(1,iters/2))
 
 if (verbose .and. myproc == 1) then
   write(nout,'(" ")')
@@ -1310,8 +1310,8 @@ subroutine initialize_2d_spectral_field_with_rand(nsmax, field)
         if (m_num .eq. 0) then
           field(index  ) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec1(l_num)-0.5_jprb) ! real part?
         else
-          field(index  ) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec1(l_num)-0.5_jprb) ! real part?
-          field(index+1) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec2(l_num)-0.5_jprb) ! imaginary part?
+          field(index-1) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec1(l_num)-0.5_jprb) ! imaginary part?
+          field(index  ) = (l_num+1)**(-5.0_jprb/6.0_jprb)*(randvec2(l_num)-0.5_jprb) ! real part?
         end if
      end do
   end do
