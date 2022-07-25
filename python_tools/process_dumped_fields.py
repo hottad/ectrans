@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.io import FortranFile
 from iris import save
 from iris.coords import DimCoord
 from iris.cube import Cube, CubeList
@@ -37,19 +38,42 @@ def proc_red_grid(data, nlats, lons, lonmax):
 # Parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("field", help="The field to process (S/U/V/T)", type=str)
-parser.add_argument("ntrunc", help="The truncation wavenumber", type=int)
+parser.add_argument("gridtype", help="The type of grid (O/F/H)", type=str)
+parser.add_argument("ngauss", help="The guassian number", type=int)
+parser.add_argument("prec",help="The precision (sp/dp)",type=str)
+parser.add_argument("endian",help="The endian (big/little)",type=str)
 args = parser.parse_args()
 field = args.field
-ntrunc = args.ntrunc
+gridtype = args.gridtype
+nlats = 2*(args.ngauss)
+prec=args.prec
+if args.endian=="big":
+    endian=">"
+elif args.endian=="little":
+    endian="<"
 
-# Calculate number of latitudes and maximum number of longitudes in a latitude band (i.e. at the
+# Calculate maximum number of longitudes in a latitude band (i.e. at the
 # Equator)
-nlats = 2*(ntrunc+1)
-lonmax = 20 + 4*ntrunc
+if gridtype == "O":
+    lonmax = 20 + 2*nlats-4
+    # Define number of longitudes at each latitude band for the cubic octahedral reduced grid
+    northern_hemisphere_lats = [20 + 4*i for i in range(nlats//2-1)]
+    lons = northern_hemisphere_lats + northern_hemisphere_lats[::-1]
+elif gridtype == "F":
+    lonmax = 2*nlats
+    # Define number of longitudes at each latitude band for the cubic full grid
+    northern_hemisphere_lats = [lonmax for i in range(nlats//2-1)]
+    lons = northern_hemisphere_lats + northern_hemisphere_lats[::-1]
+elif gridtype == "H":
+    lonmax = nlats
+    # Define number of longitudes at each latitude band for the cubic HEALPix reduced grid
+    northern_polar_lats = [4+4*i for i in range(nlats//4)]
+    northern_tropic_lats = [nlats for i in range(nlats//4)] 
+    northern_hemisphere_lats = northern_polar_lats + northern_tropic_lats
+    lons = northern_hemisphere_lats + northern_hemisphere_lats[::-1]
+else:
+    raise ValueError(f"Unsuported gridtype ${gridtype}. It must one of O/F/H.")
 
-# Define number of longitudes at each latitude band for the cubic octahedral reduced grid
-northern_hemisphere_lats = [20 + 4*i for i in range(ntrunc+1)]
-lons = northern_hemisphere_lats + northern_hemisphere_lats[::-1]
 
 # Define regular latitudes (I'm too lazy to do it properly for a Gaussian grid)
 lats = np.linspace(90, -90, nlats)
@@ -63,7 +87,14 @@ if len(files) == 0:
 for filename in files:
     # Open binary file
     print(f"Opening {filename}")
-    data = np.fromfile(filename, dtype="float32")
+    if prec == "sp":
+        f = FortranFile(filename,'r',endian+'u4')
+        data = f.read_record(dtype=endian+'f4')
+        f.close()
+    elif prec == "dp":
+        f = FortranFile(filename,'r',endian+'u4')
+        data = f.read_record(dtype=endian+'f8')
+        f.close()
 
     # Process data
     data_procd = proc_red_grid(data, nlats, lons, lonmax)
@@ -73,7 +104,7 @@ for filename in files:
     time_slices.append(data_procd)
 
 # Create Iris cube from processed data
-cube = create_cube(np.array(time_slices), "field", lats)
+cube = create_cube(np.array(time_slices), field, lats)
 
 # Save to file
 save(CubeList([cube]), f"{field}.nc", fill_value=np.nan)
