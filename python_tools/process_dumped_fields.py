@@ -57,7 +57,7 @@ elif args.endian=="little":
 if gridtype == "O":
     lonmax = 20 + 2*nlats-4
     # Define number of longitudes at each latitude band for the cubic octahedral reduced grid
-    northern_hemisphere_lats = [20 + 4*i for i in range(nlats//2-1)]
+    northern_hemisphere_lats = [20 + 4*i for i in range(nlats//2)]
     lons = northern_hemisphere_lats + northern_hemisphere_lats[::-1]
 elif gridtype == "F":
     lonmax = 2*nlats
