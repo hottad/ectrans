@@ -940,7 +940,7 @@ subroutine parse_grid(cgrid,ndgl,nloen)
   integer, intent(inout) :: ndgl
   integer, intent(inout), allocatable :: nloen(:)
   integer :: ios
-  integer :: gaussian_number
+  integer :: gaussian_number, nside
   read(cgrid(2:len_trim(cgrid)),*,IOSTAT=ios) gaussian_number
   if (ios==0) then
     ndgl = 2 * gaussian_number
@@ -957,13 +957,17 @@ subroutine parse_grid(cgrid,ndgl,nloen)
       return
     endif
     if (cgrid(1:1) == 'H') then ! HEALPix grid
-      do i=1, ndgl / 4
+      if(mod(ndgl,4).ne.0) then
+        call parsing_failed("ERROR: With H-grid, the number must be divisible by 2: "// trim(cgrid))
+      end if
+      nside=ndgl/4
+      do i=1, nside
         nloen(i) = 4*i
       end do
-      do i=ndgl / 4 + 1, ndgl / 2
-        nloen(i) = ndgl
+      do i=nside + 1, 2*nside
+        nloen(i) = 4*nside
       end do
-      do i=1, ndgl / 2
+      do i=1, 2*nside
         nloen(ndgl - i +1) =  nloen(i)
       end do
       return
