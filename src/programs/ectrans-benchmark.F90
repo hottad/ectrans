@@ -113,6 +113,7 @@ logical :: lkeeprpnm = .false.
 logical :: luseflt = .false. ! Use fast legendre transforms
 logical :: lusecc = .false. ! Use Clenshaw-Curtis quadrature instead of Gaussian
 logical :: lusehlpx = .false. ! Use HEALPix grid instead of Gaussian grid
+logical :: lusefj = .false. ! Use Fejer quadrature (dual of Clenshaw-Curtis) instead of Gaussian
 logical :: linirand = .false. ! Initialize spectral arrays with random numbers
 logical :: ltrace_stats = .false.
 logical :: lstats_omp = .false.
@@ -220,7 +221,7 @@ luse_mpi = detect_mpirun()
 
 ! Setup
 call get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, &
-  & luseflt, lusecc, lusehlpx, linirand, nproma, verbosity, ldump_values, lprint_norms, lmeminfo)
+  & luseflt, lusecc, lusehlpx, lusefj, linirand, nproma, verbosity, ldump_values, lprint_norms, lmeminfo)
 if (cgrid == '') cgrid = cubic_octahedral_gaussian_grid(nsmax)
 call parse_grid(cgrid, ndgl, nloen)
 nflevg = nlev
@@ -398,8 +399,8 @@ call gstats(1, 1)
 
 call gstats(2, 0)
 call setup_trans(ksmax=nsmax, kdgl=ndgl, kloen=nloen, ldsplit=.true.,          &
-  &                 ldusefftw=lfftw, ldusecc=lusecc, ldusehlpx=lusehlpx, lduserpnm=luserpnm, &
-  &                 ldkeeprpnm=lkeeprpnm, lduseflt=luseflt)
+  &                 ldusefftw=lfftw, ldusecc=lusecc, ldusehlpx=lusehlpx, ldusefj=lusefj, &
+  &                 lduserpnm=luserpnm, ldkeeprpnm=lkeeprpnm, lduseflt=luseflt)
 call gstats(2, 1)
 
 call trans_inq(kspec2=nspec2, kspec2g=nspec2g, kgptot=ngptot, kgptotg=ngptotg)
@@ -440,6 +441,7 @@ if (verbosity >= 0) then
   write(nout,'("luseflt   ",l)') luseflt
   write(nout,'("lusecc    ",l)') lusecc
   write(nout,'("lusehlpx  ",l)') lusehlpx
+  write(nout,'("lusefj    ",l)') lusefj
   write(nout,'("linirand  ",l)') linirand
   write(nout,'("lvordiv   ",l)') lvordiv
   write(nout,'("lscders   ",l)') lscders
@@ -1017,7 +1019,7 @@ subroutine parsing_failed(message)
 end subroutine
 
 subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, lscders, luvders, &
-  &               lflt, lcc, lhlpx, lrand, nproma, verbosity, ldump_values, lprint_norms, lmeminfo)
+  &               lflt, lcc, lhlpx, lfj, lrand, nproma, verbosity, ldump_values, lprint_norms, lmeminfo)
 
   integer, intent(inout) :: nsmax           ! Spectral truncation
   character(len=16), intent(inout) :: cgrid ! Spectral truncation
@@ -1030,6 +1032,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   logical, intent(inout) :: lflt            ! Use fast Legendre transforms
   logical, intent(inout) :: lcc             ! use Clenshaw-Curtis quadrature
   logical, intent(inout) :: lhlpx           ! use HEALPix grid
+  logical, intent(inout) :: lfj             ! use Fejer grid
   logical, intent(inout) :: lrand           ! initialize spectral arrays with random numbers
   integer, intent(inout) :: nproma          ! NPROMA
   integer, intent(inout) :: verbosity       ! Level of verbosity
@@ -1049,6 +1052,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
   lflt = .false.
   lcc  = .false.
   lhlpx= .false.
+  lfj  = .false.
 
   do while (iarg <= command_argument_count())
     call get_command_argument(iarg, carg)
@@ -1063,6 +1067,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
       ! Parse verbosity argument
       case('-v')
         verbosity = 1
+        print *, 'verbosity=',verbosity
       ! Parse number of iterations argument
       case('-n','--niter')
         iarg = iarg + 1
@@ -1088,6 +1093,7 @@ subroutine get_command_line_arguments(nsmax, cgrid, iters, nfld, nlev, lvordiv, 
       case('--flt'); lflt = .True.
       case('--cc'); lcc = .True.
       case('--hlpx'); lhlpx = .True.
+      case('--fj'); lfj = .True.
       case('--rand'); lrand = .True.
       case('--nproma'); nproma = get_int_value(iarg)
       case('--dump-values'); ldump_values = .true.
@@ -1207,6 +1213,7 @@ subroutine print_help(unit)
   write(nout, "(a)") "    --flt               Run with fast Legendre transforms (default off)"
   write(nout, "(a)") "    --cc                Run with Clenshaw-Curtis quadrature and grid (default off)"
   write(nout, "(a)") "    --hlpx              Run with HEALPix grid (default off)"
+  write(nout, "(a)") "    --fj                Run with Fejer quadrature (dual of Clenshaw-Curtis) (default off)"
   write(nout, "(a)") "    --rand              Initialize spectral arrays with random numbers (default off)"
   write(nout, "(a)") "    --nproma NPROMA     Run with NPROMA (default no blocking: NPROMA=ngptot)"
   write(nout, "(a)") "    --norms             Calculate and print spectral norms of transformed&

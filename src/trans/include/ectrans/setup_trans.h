@@ -11,7 +11,7 @@
 INTERFACE
 SUBROUTINE SETUP_TRANS(KSMAX,KDGL,KDLON,KLOEN,LDSPLIT,PSTRET,&
 &KTMAX,KRESOL,PWEIGHT,LDGRIDONLY,LDUSERPNM,LDKEEPRPNM,LDUSEFLT,&
-&LDSPSETUPONLY,LDPNMONLY,LDUSEFFTW,LDUSECC,LDUSEHLPX,&
+&LDSPSETUPONLY,LDPNMONLY,LDUSEFFTW,LDUSECC,LDUSEHLPX,LDUSEFJ,&
 &LDLL,LDSHIFTLL,CDIO_LEGPOL,CDLEGPOLFNAME,KLEGPOLPTR,KLEGPOLPTR_LEN)
 
 !**** *SETUP_TRANS* - Setup transform package for specific resolution
@@ -53,6 +53,7 @@ SUBROUTINE SETUP_TRANS(KSMAX,KDGL,KDLON,KLOEN,LDSPLIT,PSTRET,&
 !     LDUSEFFTW  - Use FFTW for FFTs
 !     LDUSECC    - Use Clenshaw-Curtis quadrature instead of Gauss
 !     LDUSEHLPX  - Use HEALPix grid instead of Gauss
+!     LDUSEFJ    - Use Fejer grid (dual of Clenshaw-Curtis) instead of Gauss
 !     LDLL                 - Setup second set of input/output latitudes
 !                                 the number of input/output latitudes to transform is equal KDGL 
 !                                 or KDGL+2 in the case that includes poles + equator
@@ -105,6 +106,7 @@ LOGICAL   ,OPTIONAL,INTENT(IN):: LDSPSETUPONLY
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDUSEFFTW
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDUSECC
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDUSEHLPX
+LOGICAL   ,OPTIONAL,INTENT(IN):: LDUSEFJ
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDLL
 LOGICAL   ,OPTIONAL,INTENT(IN):: LDSHIFTLL
 CHARACTER(LEN=*),OPTIONAL,INTENT(IN):: CDIO_LEGPOL

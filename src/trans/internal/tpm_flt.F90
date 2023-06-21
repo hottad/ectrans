@@ -50,7 +50,7 @@ LOGICAL :: LUSEFLT
 LOGICAL :: LUSE_BELUSOV
 LOGICAL :: LKEEPRPNM
 LOGICAL :: LSOUTHPNM ! .TRUE. to compute Legendre polynomials on southern hemisphere
-CHARACTER(LEN=1) :: CGRID ! 'G' for Gauss, 'C' for Clenshaw-Curtis and 'H' for HEALPix
+CHARACTER(LEN=1) :: CGRID ! 'G' for Gauss, 'C' for Clenshaw-Curtis, 'H' for HEALPix, and 'F' for Fejer
 INTEGER(KIND=JPIM) :: IMLOC
 INTEGER(KIND=JPIM) :: ITHRESHOLD
 INTEGER(KIND=JPIM) :: NDGNHD ! dual set dimension

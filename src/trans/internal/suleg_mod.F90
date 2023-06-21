@@ -341,6 +341,25 @@ CASE('H')
   ENDDO
   ! normalize the weight
   ZW(1:INN)=ZW(1:INN)/(12._JPRD*NSIDE*NSIDE)
+CASE('F')
+  ! Fejer grid and quadrature
+  ! Eqs.(20-21) of Hotta and Ujiie (2018) https://doi.org/10.1002/qj.3282
+  ZPI = 2.0_JPRD*ASIN(1.0_JPRD)
+  ZINC = ZPI/REAL(INN,JPRD)
+  DO JGL=1,INN/2
+    ZTHETA = (REAL(JGL,JPRD)-0.5_JPRD)*ZINC
+    ZLRMUZ(JGL) = COS(ZTHETA)
+    ZFACT=0._JPRD
+    DO JNP=1,INN/2
+      ZFACT=ZFACT+COS(REAL(2*JNP,JPRD)*ZTHETA)/REAL(4*JNP-1,JPRD)
+    ENDDO
+    ZW(JGL) = (1._JPRD-ZFACT)/REAL(INN,JPRD)
+  ENDDO
+  ! Southern Hemisphere mirrors Northern Hemisphere
+  DO JGL=INN/2_JPIM+1_JPIM,INN
+    ZLRMUZ(JGL)= - ZLRMUZ(INN+1_JPIM-JGL)
+    ZW(    JGL)=   ZW(    INN+1_JPIM-JGL)
+  ENDDO
 CASE DEFAULT
   CALL ABORT_TRANS('SULEG: INVALID GRID TYPE IN S%CGRID')
 END SELECT
